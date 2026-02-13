@@ -4,16 +4,22 @@ use ieee.std_logic_1164.all;
 entity ws2812b_drv is
 	generic
 	(
-		LED_NUMBER : natural := 64; -- 8x8 matrix
+		-- 8x8 matrix
+		LED_NUMBER : natural := 64;
 		
-		REFRESH_PERIOD : natural := 1_000_000; -- 20ms
+		-- 20ms @ 50MHz
+		REFRESH_PERIOD_CLK : natural := 1_000_000;
 
-		T_RESET : natural := 10000;	-- 200us
+		-- 200us @ 50MHz
+		T_RESET_CLK : natural := 10000;
 	
-		T0H : natural := 20; -- 400ns
-		T1H : natural := 40; -- 800ns
-		T0L : natural := 40; -- 800ns
-		T1L : natural := 20	-- 400ns
+		-- 400ns and 800ns @ 50MHz
+		T0H_CLK : natural := 20; -- 400ns
+		T0L_CLK : natural := 40; -- 800ns
+
+		-- 800ns and 400ns @ 50MHz
+		T1H_CLK : natural := 40;
+		T1L_CLK : natural := 20
 	);
 	
 	port
@@ -27,14 +33,16 @@ end entity;
 
 architecture rtl of ws2812b_drv is
 
-	type frame_buffer_t is array (0 to LED_NUMBER-1) of std_logic_vector(23 downto 0);
+	constant COLOR_NUM_BITS : natural := 24;
+
+	type frame_buffer_t is array (0 to LED_NUMBER-1) of std_logic_vector(COLOR_NUM_BITS-1 downto 0);
 
 	-- led test pattern
 	function init_frame return frame_buffer_t is
 		 variable tmp : frame_buffer_t;
-		 constant RED   : std_logic_vector(23 downto 0) := x"000f00";
-		 constant GREEN : std_logic_vector(23 downto 0) := x"0f0000";
-		 constant BLUE  : std_logic_vector(23 downto 0) := x"00000f";
+		 constant RED   : std_logic_vector(COLOR_NUM_BITS-1 downto 0) := x"000f00";
+		 constant GREEN : std_logic_vector(COLOR_NUM_BITS-1 downto 0) := x"0f0000";
+		 constant BLUE  : std_logic_vector(COLOR_NUM_BITS-1 downto 0) := x"00000f";
 	begin
 		 for i in 0 to LED_NUMBER-1 loop
 			  case i mod 3 is
@@ -52,7 +60,16 @@ architecture rtl of ws2812b_drv is
 
 	signal frame_buffer : frame_buffer_t := init_frame;
 
-	type drv_state_t is (IDLE, RESET_PULSE, LOAD_PIXEL, ALIGN_LOAD_BIT, LOAD_BIT, BIT_H, BIT_L);
+	type drv_state_t is
+	(
+		IDLE,
+		RESET_PULSE,
+		LOAD_PIXEL,
+		ALIGN_LOAD_BIT,
+		LOAD_BIT,
+		BIT_H,
+		BIT_L
+	);
 	
 	signal c_state : drv_state_t := IDLE;
 	signal delay_cnt : natural := 0;
@@ -63,7 +80,7 @@ architecture rtl of ws2812b_drv is
 	signal high_pulse_limit : natural := 0;
 	signal low_pulse_limit : natural := 0;
 	
-	signal pixel_reg : std_logic_vector(23 downto 0);
+	signal pixel_reg : std_logic_vector(COLOR_NUM_BITS-1 downto 0);
 
 begin
 
@@ -81,7 +98,7 @@ begin
 
 			case c_state is
 				when IDLE =>				
-					if delay_cnt = REFRESH_PERIOD-1 then
+					if delay_cnt = REFRESH_PERIOD_CLK-1 then
 						c_state <= RESET_PULSE;
 						delay_cnt <= 0;
 						led_idx <= 0;
@@ -92,7 +109,7 @@ begin
 					end if;
 
 				when RESET_PULSE =>
-					if delay_cnt = T_RESET-1 then
+					if delay_cnt = T_RESET_CLK-1 then
 						delay_cnt <= 0;
 						c_state <= LOAD_PIXEL;
 						dout <= '1';
@@ -108,12 +125,12 @@ begin
 					c_state <= LOAD_BIT;
 
 				when LOAD_BIT =>
-						if pixel_reg(23-bit_idx) = '1' then
-							high_pulse_limit <= T1H-2;
-							low_pulse_limit <= T1L;
+						if pixel_reg(COLOR_NUM_BITS-1-bit_idx) = '1' then
+							high_pulse_limit <= T1H_CLK-2;
+							low_pulse_limit <= T1L_CLK;
 						else
-							high_pulse_limit <= T0H-2;
-							low_pulse_limit <= T0L;
+							high_pulse_limit <= T0H_CLK-2;
+							low_pulse_limit <= T0L_CLK;
 						end if;
 
 						c_state <= BIT_H;
@@ -132,7 +149,7 @@ begin
 					if delay_cnt = low_pulse_limit-1 then
 						delay_cnt <= 0;
 
-						if bit_idx = 23 then
+						if bit_idx = COLOR_NUM_BITS-1 then
 							bit_idx <= 0;
 
 							if led_idx < LED_NUMBER-1 then
