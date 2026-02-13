@@ -19,11 +19,11 @@ begin
 			REFRESH_PERIOD => 50,
 			T_RESET => 10,
 			
-			T0H => 2,
-			T0L => 3,
+			T0H => 3,
+			T0L => 7,
 			
-			T1H => 4,
-			T1L => 5
+			T1H => 7,
+			T1L => 3
 		)
 		port map
 		(
