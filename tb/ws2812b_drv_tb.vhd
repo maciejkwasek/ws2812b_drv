@@ -16,14 +16,14 @@ begin
 		(
 			LED_NUMBER => 4,
 			
-			REFRESH_PERIOD => 50,
-			T_RESET => 10,
+			REFRESH_PERIOD_CLK => 50,
+			T_RESET_CLK => 10,
 			
-			T0H => 3,
-			T0L => 7,
+			T0H_CLK => 3,
+			T0L_CLK => 7,
 			
-			T1H => 7,
-			T1L => 3
+			T1H_CLK => 7,
+			T1L_CLK => 3
 		)
 		port map
 		(
