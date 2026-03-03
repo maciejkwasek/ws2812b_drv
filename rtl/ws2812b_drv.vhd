@@ -1,12 +1,15 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity ws2812b_drv is
 	generic
 	(
 		-- 8x8 matrix
 		LED_NUMBER : natural := 64;
-		
+		PIXEL_IDX_WIDTH : natural := 6;
+		COLOR_NUM_BITS : natural := 24;
+
 		-- 20ms @ 50MHz
 		REFRESH_PERIOD_CLK : natural := 1_000_000;
 
@@ -21,19 +24,23 @@ entity ws2812b_drv is
 		T1H_CLK : natural := 40;
 		T1L_CLK : natural := 20
 	);
-	
+
 	port
 	(
 		clk : in std_logic;
 		rst_n : in std_logic;
-		
-		dout : out std_logic
+
+		dout : out std_logic;
+
+		pixel_idx : in std_logic_vector(PIXEL_IDX_WIDTH-1 downto 0);
+		pixel_data: in std_logic_vector(COLOR_NUM_BITS-1 downto 0);
+		pixel_valid : in std_logic;
+
+		te : out std_logic
 	);
 end entity;
 
 architecture rtl of ws2812b_drv is
-
-	constant COLOR_NUM_BITS : natural := 24;
 
 	type frame_buffer_t is array (0 to LED_NUMBER-1) of std_logic_vector(COLOR_NUM_BITS-1 downto 0);
 
@@ -84,6 +91,20 @@ architecture rtl of ws2812b_drv is
 
 begin
 
+	-- handle writing do fb
+	process(clk, rst_n)
+	begin
+		if rst_n = '0' then
+			--
+			-- nothing to do
+		elsif rising_edge(clk) then
+			if pixel_valid = '1' then
+				frame_buffer(to_integer(unsigned(pixel_idx))) <= pixel_data;
+			end if;
+		end if;
+	end process;
+
+	-- handle ws2812b protocol and timings
 	process(clk, rst_n)
 	begin
 		if rst_n = '0' then
@@ -170,5 +191,7 @@ begin
 			end case;
 		end if;
 	end process;
-	
+
+	te <= '1' when c_state = IDLE and delay_cnt < REFRESH_PERIOD_CLK/2 else '0';
+
 end architecture;

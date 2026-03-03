@@ -9,19 +9,24 @@ architecture sim of ws2812b_drv_tb is
 	signal rst_n : std_logic;
 	
 	signal dout : std_logic;
+
+	signal pixel_idx : std_logic_vector(5 downto 0) := (others => '0');
+	signal pixel_data : std_logic_vector(23 downto 0) := (others => '0');
+	signal pixel_valid : std_logic := '0';
+	signal te : std_logic;
 begin
 
 	ws2812b_drv_inst : entity work.ws2812b_drv
 		generic map
 		(
 			LED_NUMBER => 4,
-			
+
 			REFRESH_PERIOD_CLK => 50,
 			T_RESET_CLK => 10,
-			
+
 			T0H_CLK => 3,
 			T0L_CLK => 7,
-			
+
 			T1H_CLK => 7,
 			T1L_CLK => 3
 		)
@@ -29,7 +34,13 @@ begin
 		(
 			clk => clk,
 			rst_n => rst_n,
-			dout => dout
+			dout => dout,
+
+			pixel_idx => pixel_idx,
+			pixel_data => pixel_data,
+			pixel_valid => pixel_valid,
+
+			te => te
 		);
 
 	process
@@ -45,6 +56,7 @@ begin
 	process
 	begin
 		report "dout = " & std_logic'image(dout);
+		report "te = " & std_logic'image(te);
 		
 		wait until rising_edge(clk);
 		rst_n <= '0';
